@@ -26,10 +26,11 @@ use datafusion::{
     },
 };
 use sqlfuzz::{generate_batch, plan_to_sql, FuzzConfig, SQLRelationGenerator, SQLTable};
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::{
     fs::File,
     path::{Path, PathBuf},
+    process::{Command, Output},
     sync::Arc,
 };
 use structopt::StructOpt;
@@ -45,6 +46,8 @@ enum Config {
     Execute(ExecuteConfig),
     /// Compare two test runs
     Compare(CompareConfig),
+    /// Run SQL queries and capture results
+    ExecuteV2(ExecuteConfigV2),
 }
 
 #[derive(Debug, StructOpt)]
@@ -81,6 +84,17 @@ struct ExecuteConfig {
     verbose: bool,
 }
 
+/// execute with datafusion-cli
+#[derive(Debug, StructOpt)]
+struct ExecuteConfigV2 {
+    #[structopt(short, long, required = true)]
+    datafusion_cli: PathBuf,
+    #[structopt(short, long, required = true)]
+    create_table: PathBuf,
+    #[structopt(short, long, required = true)]
+    query: PathBuf,
+}
+
 #[derive(Debug, StructOpt)]
 struct CompareConfig {
     #[structopt(required = true)]
@@ -96,6 +110,7 @@ async fn main() -> Result<()> {
         Config::Data(config) => data_gen(&config).await,
         Config::Execute(config) => execute(&config).await,
         Config::Compare(config) => compare(&config).await,
+        Config::ExecuteV2(config) => execute_v2(&config).await,
     }
 }
 
@@ -193,6 +208,53 @@ async fn execute(config: &ExecuteConfig) -> Result<()> {
     Ok(())
 }
 
+async fn execute_v2(config: &ExecuteConfigV2) -> Result<()> {
+    // let queries = if config.query.is_dir() {
+    //     config
+    //         .query
+    //         .read_dir()?
+    //         .filter(|entry| entry.as_ref().unwrap().path().is_file())
+    //         .map(|entry| entry.unwrap().path())
+    //         .collect::<Vec<_>>()
+    // } else {
+    //     vec![config.query.clone()]
+    // };
+    let datafusion_cli = &config.datafusion_cli;
+    let create_table = &config.create_table;
+    let query = &config.query;
+    println!(
+        "currenr_dir:{:?}",
+        std::env::current_dir().unwrap().to_str()
+    );
+    let out = execute_single_query(datafusion_cli, create_table, query)?;
+    println!("{}", String::from_utf8(out.stdout).unwrap());
+    Ok(())
+}
+
+fn execute_single_query(
+    datafusion_cli: &PathBuf,
+    create_table: &PathBuf,
+    query: &PathBuf,
+) -> Result<Output> {
+    println!("datafusion-cli:{}", datafusion_cli.to_string_lossy());
+    println!(
+        "create_table:{}",
+        create_table.to_string_lossy().to_string()
+    );
+    println!("query:{}", query.to_string_lossy());
+
+    let command = format!(
+        "{} -f {} -f {} --format table -q",
+        datafusion_cli.to_string_lossy(),
+        create_table.to_string_lossy(),
+        query.to_string_lossy()
+    );
+
+    let output = Command::new("sh").arg("-c").arg(command).output()?;
+
+    Ok(output)
+}
+
 fn print_results(batches: Vec<RecordBatch>) {
     for batch in &batches {
         for i in 0..batch.num_rows() {
@@ -246,6 +308,7 @@ async fn data_gen(config: &DataGen) -> Result<()> {
         Field::new("c5", DataType::Utf8, true),
     ]));
 
+    let mut create_tabel_file = File::create(config.path.join("create_table.sql"))?;
     let mut rng = rand::thread_rng();
     let writer_properties = WriterProperties::builder().build();
 
@@ -254,12 +317,23 @@ async fn data_gen(config: &DataGen) -> Result<()> {
         let filename = format!("test{}.parquet", i);
         let path = config.path.join(&filename);
         println!("Generating {:?}", path);
-        let file = File::create(path)?;
+        let file = File::create(path.clone())?;
         let mut writer =
             ArrowWriter::try_new(file, schema.clone(), Some(writer_properties.clone()))?;
         writer.write(&batch)?;
         writer.close()?;
+
+        let create_table_sql = format!(
+            "CREATE EXTERNAL TABLE test{} STORED AS PARQUET LOCATION '{}';\n",
+            i,
+            path.to_string_lossy()
+        );
+        println!("sql:{}", create_table_sql);
+        create_tabel_file.write(create_table_sql.as_bytes())?;
     }
+
+    create_tabel_file.sync_all()?;
+
     Ok(())
 }
 
@@ -311,7 +385,12 @@ async fn query_gen(config: &QueryGen) -> Result<()> {
         match ctx.create_logical_plan(&sql) {
             Ok(_plan) => {
                 generated += 1;
-                println!("-- SQL Query #{}:\n\n{};\n\n", generated, sql);
+                if generated < num_queries {
+                    print!("-- SQL Query #{}:\n\n{};\n\n", generated, sql);
+                } else {
+                    print!("-- SQL Query #{}:\n\n{};", generated, sql);
+                };
+                // println!("-- SQL Query #{}:\n\n{};\n\n", generated, sql);
                 // println!("Plan:\n\n{:?}", plan)
             }
             Err(e) if config.verbose => {
