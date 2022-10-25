@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use datafusion::arrow::array::{Array, Int32Builder, Int8Builder, StringBuilder};
+use datafusion::arrow::array::{Array, Int16Builder, Int32Builder, Int8Builder, StringBuilder};
 use datafusion::arrow::datatypes::{DataType, Schema};
 use datafusion::arrow::error::{ArrowError, Result};
 use datafusion::arrow::record_batch::RecordBatch;
@@ -32,6 +32,7 @@ pub fn generate_batch(
         .map(|f| match f.data_type() {
             DataType::Utf8 => Ok(Arc::new(StringGenerator {}) as Arc<dyn ArrayGenerator>),
             DataType::Int8 => Ok(Arc::new(Int8Generator {}) as Arc<dyn ArrayGenerator>),
+            DataType::Int16 => Ok(Arc::new(Int16Generator {}) as Arc<dyn ArrayGenerator>),
             DataType::Int32 => Ok(Arc::new(Int32Generator {}) as Arc<dyn ArrayGenerator>),
             _ => Err(ArrowError::SchemaError("Unsupported data type".to_string())),
         })
@@ -51,17 +52,17 @@ struct StringGenerator {}
 
 impl ArrayGenerator for StringGenerator {
     fn generate(&self, rng: &mut ThreadRng, n: usize) -> Result<Arc<dyn Array>> {
-        let mut builder = StringBuilder::new(n);
+        let mut builder = StringBuilder::new();
         for i in 0..n {
             if i % 7 == 0 {
-                builder.append_null()?;
+                builder.append_null();
             } else {
                 let mut str = String::new();
                 for _ in 0..8 {
                     let ch = rng.gen_range(32..127); // printable ASCII chars
                     str.push(char::from_u32(ch).unwrap());
                 }
-                builder.append_value(str)?;
+                builder.append_value(str);
             }
         }
         Ok(Arc::new(builder.finish()))
@@ -74,12 +75,28 @@ struct Int8Generator {}
 
 impl ArrayGenerator for Int8Generator {
     fn generate(&self, rng: &mut ThreadRng, n: usize) -> Result<Arc<dyn Array>> {
-        let mut builder = Int8Builder::new(n);
+        let mut builder = Int8Builder::new();
         for i in 0..n {
             if i % 5 == 0 {
-                builder.append_null()?;
+                builder.append_null();
             } else {
-                builder.append_value(rng.gen::<i8>())?;
+                builder.append_value(rng.gen::<i8>());
+            }
+        }
+        Ok(Arc::new(builder.finish()))
+    }
+}
+
+struct Int16Generator {}
+
+impl ArrayGenerator for Int16Generator {
+    fn generate(&self, rng: &mut ThreadRng, n: usize) -> Result<Arc<dyn Array>> {
+        let mut builder = Int16Builder::new();
+        for i in 0..n {
+            if i % 5 == 0 {
+                builder.append_null();
+            } else {
+                builder.append_value(rng.gen::<i16>());
             }
         }
         Ok(Arc::new(builder.finish()))
@@ -90,12 +107,12 @@ struct Int32Generator {}
 
 impl ArrayGenerator for Int32Generator {
     fn generate(&self, rng: &mut ThreadRng, n: usize) -> Result<Arc<dyn Array>> {
-        let mut builder = Int32Builder::new(n);
+        let mut builder = Int32Builder::new();
         for i in 0..n {
             if i % 5 == 0 {
-                builder.append_null()?;
+                builder.append_null();
             } else {
-                builder.append_value(rng.gen::<i32>())?;
+                builder.append_value(rng.gen::<i32>());
             }
         }
         Ok(Arc::new(builder.finish()))

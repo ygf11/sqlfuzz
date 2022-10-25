@@ -1,0 +1,192 @@
+name: fuzzing
+
+on: [workflow_dispatch]
+
+jobs:
+  test:
+    name: compare with postgres
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: db_test
+          POSTGRES_INITDB_ARGS: --encoding=UTF-8 --lc-collate=C --lc-ctype=C
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      # - uses: actions/checkout@v3
+      # - name: Init postgres server
+      #   run: |
+      #     echo "$POSTGRES_HOST:$POSTGRES_PORT:$POSTGRES_DB:$POSTGRES_USER:$POSTGRES_PASSWORD" | tee ~/.pgpass
+      #     chmod 0600 ~/.pgpass
+      #     echo "ls"
+      #     ls
+      #     psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -f fuzzing-tests/create_table_psql.sql
+      #     psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -c "\copy test0 FROM '$(pwd)/fuzzing-tests/test0.csv' WITH (FORMAT csv, HEADER true);"
+      #     echo "execute query"
+      #     psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -f fuzzing-tests/query.sql
+      #   env:
+      #     POSTGRES_HOST: localhost
+      #     POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+      #     POSTGRES_DB: db_test
+      #     POSTGRES_USER: postgres
+      #     POSTGRES_PASSWORD: postgres
+      - name: checkout to working dir
+        uses: actions/checkout@v3
+
+      - name: checkout to arrow-datafusion
+        uses: actions/checkout@v3
+        with:
+          repository: apache/arrow-datafusion
+          path: ./arrow-datafusion
+          submodules: recursive
+      - name: Show Current directory
+        run: ls
+
+      - name: Show Working directory
+        run: ls ../
+
+      - name: Pwd directory
+        run: pwd
+
+      - name: Install Build Dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+      - name: Setup Rust toolchain
+        shell: bash
+        run: |
+          echo "Installing stable"
+          rustup toolchain install stable
+          rustup default stable
+      - name: Build datafusion-cli
+        run: (cd arrow-datafusion/datafusion-cli && cargo build)
+
+      # - name: Show build result
+      #   run: cd arrow-datafusion/datafusion-cli/target/debug && ./datafusion-cli
+
+      - name: Build sqlfuzz
+        run: cargo build
+
+      - name: Show build result
+        run: ls target/
+
+      - name: Create testdata dir
+        run: mkdir testdata
+
+      - name: Generate test data
+        run: ./target/debug/sqlfuzz data --path ./testdata/ --num-files 3 --row-count 10
+
+      - name: Generate query sql
+        run: |
+          mkdir -p ./testdata/sqls
+          ./target/debug/sqlfuzz query --table ./testdata/test0.parquet  ./testdata/test1.parquet ./testdata/test2.parquet \
+                                       --path ./testdata/sqls --join-type inner --count 3  --max-depth 1
+
+      - name: Show query sql
+        run: |
+          ls ./testdata/sqls  
+          cat  ./testdata/sqls/query0.sql
+          cat  ./testdata/sqls/query1.sql
+          cat  ./testdata/sqls/query2.sql
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r fuzzing-tests/requirements.txt
+      - name: Parquet to csv
+        run: python fuzzing-tests/parquet2csv.py
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: my-artifact
+          path: testdata # or path/to/artifact
+
+      - name: Show csv file contents
+        run: |
+          cat ./testdata/test0.csv  
+          cat ./testdata/test1.csv   
+          cat ./testdata/test2.csv
+
+      - name: Init postgres server
+        run: |
+          echo "$POSTGRES_HOST:$POSTGRES_PORT:$POSTGRES_DB:$POSTGRES_USER:$POSTGRES_PASSWORD" | tee ~/.pgpass
+          chmod 0600 ~/.pgpass
+          echo "ls"
+          ls 
+          psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -f ./testdata/create_table_psql.sql
+          psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -c "\copy test0 FROM '$(pwd)/testdata/test0.csv' WITH (FORMAT csv, HEADER true);"
+          psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -c "\copy test1 FROM '$(pwd)/testdata/test1.csv' WITH (FORMAT csv, HEADER true);"
+          psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -c "\copy test2 FROM '$(pwd)/testdata/test2.csv' WITH (FORMAT csv, HEADER true);"
+          echo "execute query"
+          psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -f fuzzing-tests/query.sql
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+          POSTGRES_DB: db_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+
+      - name: Show files in testdata
+        run: |
+          echo "$POSTGRES_HOST:$POSTGRES_PORT:$POSTGRES_DB:$POSTGRES_USER:$POSTGRES_PASSWORD"
+          ls -lh testdata
+
+      - name: Test Psql Parity
+        run: python -m pytest -v fuzzing-tests/compare_test.py
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+          POSTGRES_DB: db_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+
+      # TODO:
+      # * load multiple cav files to pg-server
+      # * generate query
+      # * test
+
+      # - uses: actions/setup-python@v4
+      #   with:
+      #     python-version: "3.10"
+      # - name: Install Python dependencies
+      #   run: |
+      #     python -m pip install --upgrade pip setuptools wheel
+      #     python -m pip install -r fuzzing-tests/requirements.txt
+      # - name: Test Psql Parity
+      #   run: python fuzzing-tests/compare.py
+      #   env:
+      #     POSTGRES_HOST: localhost
+      #     POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+      #     POSTGRES_DB: db_test
+      #     POSTGRES_USER: postgres
+      #     POSTGRES_PASSWORD: postgres
+      # - name: Install latest nightly
+      #   uses: actions-rs/toolchain@v1
+      #   with:
+      #     toolchain: nightly
+      #     override: true
+      #     components: rustfmt, clippy
+
+      # - name: Run cargo fmt
+      #   uses: actions-rs/cargo@v1
+      #   with:
+      #     command: fmt
+      #     args: -- --check
+
+      # - name: Run cargo clippy
+      #   uses: actions-rs/cargo@v1
+      #   with:
+      #     command: clippy
+      #     args: -- -D warnings

@@ -10,8 +10,9 @@ version = "0.3.0"
 edition = "2021"
 
 [dependencies]
+arrow = "15.0.0"
 async-trait = "0.1"
-datafusion = "9.0"
+datafusion = "13.0"
 rand = "0.8"
 structopt = "0.3"
 tokio = "1.19"

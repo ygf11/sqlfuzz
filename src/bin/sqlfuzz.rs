@@ -25,7 +25,11 @@ use datafusion::{
         AvroReadOptions, CsvReadOptions, NdJsonReadOptions, ParquetReadOptions, SessionContext,
     },
 };
-use sqlfuzz::{generate_batch, plan_to_sql, FuzzConfig, SQLRelationGenerator, SQLTable};
+use sqlfuzz::{
+    generate_batch, plan_to_sql, plan_to_sql_alias, FuzzConfig, SQLRelationGenerator, SQLTable,
+    TableAliasGenerator,
+};
+use std::io::Write;
 use std::io::{BufRead, BufReader};
 use std::{
     fs::File,
@@ -69,6 +73,8 @@ struct QueryGen {
     max_depth: usize,
     #[structopt(short, long)]
     verbose: bool,
+    #[structopt(short, long, required = true)]
+    path: PathBuf,
 }
 
 #[derive(Debug, StructOpt)]
@@ -237,29 +243,61 @@ fn print_results(batches: Vec<RecordBatch>) {
 
 async fn data_gen(config: &DataGen) -> Result<()> {
     //TODO randomize the schema and support more types
+    // let schema = Arc::new(Schema::new(vec![
+    //     Field::new("c0", DataType::Int8, true),
+    //     Field::new("c1", DataType::Int8, true),
+    //     Field::new("c2", DataType::Int32, true),
+    //     Field::new("c3", DataType::Int32, true),
+    //     Field::new("c4", DataType::Utf8, true),
+    //     Field::new("c5", DataType::Utf8, true),
+    // ]));
+
+    // Using pg compatible data types
     let schema = Arc::new(Schema::new(vec![
-        Field::new("c0", DataType::Int8, true),
-        Field::new("c1", DataType::Int8, true),
-        Field::new("c2", DataType::Int32, true),
-        Field::new("c3", DataType::Int32, true),
-        Field::new("c4", DataType::Utf8, true),
-        Field::new("c5", DataType::Utf8, true),
+        Field::new("c0", DataType::Int16, true), // smallint
+        Field::new("c1", DataType::Int16, true), // smallint
+        Field::new("c2", DataType::Int32, true), // Int Integer
+        Field::new("c3", DataType::Int32, true), // Int Integer
+        Field::new("c4", DataType::Utf8, true),  // VARCHAR text
+        Field::new("c5", DataType::Utf8, true),  // VARCHAR text
     ]));
 
     let mut rng = rand::thread_rng();
     let writer_properties = WriterProperties::builder().build();
+
+    let mut create_table_file = File::create(config.path.join("create_table.sql"))?;
+    let mut create_table_for_psql_file = File::create(config.path.join("create_table_psql.sql"))?;
 
     for i in 0..config.num_files {
         let batch = generate_batch(&mut rng, &schema, config.row_count)?;
         let filename = format!("test{}.parquet", i);
         let path = config.path.join(&filename);
         println!("Generating {:?}", path);
-        let file = File::create(path)?;
+        let file = File::create(path.clone())?;
         let mut writer =
             ArrowWriter::try_new(file, schema.clone(), Some(writer_properties.clone()))?;
         writer.write(&batch)?;
         writer.close()?;
+
+        let create_table_sql = format!(
+            "\nCREATE EXTERNAL TABLE test{} STORED AS PARQUET
+            LOCATION '{}';",
+            i,
+            path.to_string_lossy()
+        );
+        println!("sql:{}", create_table_sql);
+        create_table_file.write(create_table_sql.as_bytes())?;
+
+        let create_table_for_psql = format!(
+            "CREATE TABLE test{} (c0 SMALLINT NULL, c1 SMALLINT NULL, c2 INTEGER NULL, c3 Integer NULL, c4 TEXT NULL, c5 TEXT NULL);\n",
+            i,
+        );
+        println!("sql_for_psql:{}", create_table_sql);
+        create_table_for_psql_file.write(create_table_for_psql.as_bytes())?;
     }
+
+    create_table_file.sync_all()?;
+    create_table_for_psql_file.sync_all()?;
     Ok(())
 }
 
@@ -304,14 +342,19 @@ async fn query_gen(config: &QueryGen) -> Result<()> {
             let logical_plan = plan.to_logical_plan();
             println!("Input plan:\n{:?}", logical_plan);
         }
-        let sql = plan_to_sql(&plan, 0)?;
+        let sql = plan_to_sql_alias(&plan, 0, &mut TableAliasGenerator::default())?;
 
-        // see if we produced something valid or not (according to DataFusion's
-        // SQL query planner)
         match ctx.create_logical_plan(&sql) {
             Ok(_plan) => {
+                let file_name = format!("query{}.sql", generated);
+                let mut file = File::create(config.path.join(file_name))?;
                 generated += 1;
-                println!("-- SQL Query #{}:\n\n{};\n\n", generated, sql);
+
+                let query = format!("-- SQL Query #{}:\n\n{};", generated, sql);
+                println!("{}", query);
+                file.write(query.as_bytes())?;
+
+                file.sync_all()?;
                 // println!("Plan:\n\n{:?}", plan)
             }
             Err(e) if config.verbose => {
