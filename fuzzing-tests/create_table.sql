@@ -1,2 +1,2 @@
 CREATE EXTERNAL TABLE test0 (c0 SMALLINT NULL, c1 SMALLINT NULL, c2 INT NULL, c3 INT NULL, c4 VARCHAR NULL, c5 VARCHAR NULL) STORED AS CSV WITH HEADER ROW
-            LOCATION './test/test0.csv';
+            LOCATION './fuzzing-tests/test0.csv';
