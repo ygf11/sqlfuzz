@@ -65,11 +65,11 @@ jobs:
           echo "Installing stable"
           rustup toolchain install stable
           rustup default stable
-      # - name: Build datafusion-cli
-      #   run: (cd arrow-datafusion/datafusion-cli && cargo build)    
+      - name: Build datafusion-cli
+        run: (cd arrow-datafusion/datafusion-cli && cargo build)    
 
-      # - name: Show build result
-      #   run: cd arrow-datafusion/datafusion-cli/target/debug && ./datafusion-cli
+      - name: Show build result
+        run: cd arrow-datafusion/datafusion-cli/target/debug && ./datafusion-cli
 
       # - name: Build sqlfuzz
       #   run: |  
