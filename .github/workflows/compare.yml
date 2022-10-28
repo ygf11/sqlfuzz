@@ -51,26 +51,30 @@ jobs:
       - name: Show Working directory
         run: ls ../    
 
-      # - name: Pwd directory
-      #   run: pwd  
+      - name: Pwd directory
+        run: pwd  
 
-      # - name: Install Build Dependencies
-      #   shell: bash
-      #   run: |
-      #     sudo apt-get update
-      #     sudo apt-get install -y protobuf-compiler
-      # - name: Setup Rust toolchain
-      #   shell: bash
-      #   run: |
-      #     echo "Installing stable"
-      #     rustup toolchain install stable
-      #     rustup default stable
-      #     # rustup component add rustfmt  
-      # - name: Build datafusion-cli
-      #   run: (cd arrow-datafusion/datafusion-cli && cargo build)    
+      - name: Install Build Dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+      - name: Setup Rust toolchain
+        shell: bash
+        run: |
+          echo "Installing stable"
+          rustup toolchain install stable
+          rustup default stable
+          # rustup component add rustfmt  
+      - name: Build datafusion-cli
+        run: (cd arrow-datafusion/datafusion-cli && cargo build)    
 
-      # - name: Show build result
-      #   run: cd arrow-datafusion/datafusion-cli/target/debug && ./datafusion-cli
+      - name: Show build result
+        run: cd arrow-datafusion/datafusion-cli/target/debug && ./datafusion-cli
+
+      - uses: actions/checkout@v3
+      - name: Checkout to sqlfuzz
+        run: ls 
 
       # - uses: actions/setup-python@v4
       #   with:
