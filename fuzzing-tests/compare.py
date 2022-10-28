@@ -109,14 +109,16 @@ test_files = set(root.glob("*.sql"))
 r1 = generate_csv_from_datafusion("./fuzzing-tests/query.sql")
 r2 = generate_csv_from_psql("./fuzzing-tests/query.sql")
 
-print(r1)
-print(r2)
+# print(r1)
+# print(r2)
 
 # t1 = format_csv_content(b'c2,sum_c3,avg_c3,max_c3,min_c3,count_c3\n1,367,16.681818181818183,125,-99,22\n2,184,8.363636363636363,122,-117,22\n3,395,20.789473684210527,123,-101,19\n4,29,1.2608695652173914,123,-117,23\n5,-194,-13.857142857142858,118,-101,14\n\n', True)
 # t2 = format_csv_content(b'c2,sum_c3,avg_c3,max_c3,min_c3,count_c3\n2,184,8.3636363636363636,122,-117,22\n3,395,20.7894736842105263,123,-101,19\n4,29,1.2608695652173913,123,-117,23\n5,-194,-13.8571428571428571,118,-101,14\n1,367,16.6818181818181818,125,-99,22\n', False)
 
-# df1 = pd.read_csv(io.BytesIO(t1))
-# df2 = pd.read_csv(io.BytesIO(t2))
+f_r1 = format_csv_content(r1)
+f_r2 = format_csv_content(r2)
+# df1 = pd.read_csv(f_r1)
+# df2 = pd.read_csv(f_r2)
 # np.testing.assert_allclose(df1, df2, equal_nan=True)
 
 
