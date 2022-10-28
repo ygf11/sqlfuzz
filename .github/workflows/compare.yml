@@ -33,23 +33,23 @@ jobs:
       - name: Pwd directory
         run: pwd  
 
-      - name: Install Build Dependencies
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-      - name: Setup Rust toolchain
-        shell: bash
-        run: |
-          echo "Installing stable"
-          rustup toolchain install stable
-          rustup default stable
-          # rustup component add rustfmt  
-      - name: Build datafusion-cli
-        run: (cd arrow-datafusion/datafusion-cli && cargo build)    
+      # - name: Install Build Dependencies
+      #   shell: bash
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y protobuf-compiler
+      # - name: Setup Rust toolchain
+      #   shell: bash
+      #   run: |
+      #     echo "Installing stable"
+      #     rustup toolchain install stable
+      #     rustup default stable
+      #     # rustup component add rustfmt  
+      # - name: Build datafusion-cli
+      #   run: (cd arrow-datafusion/datafusion-cli && cargo build)    
 
-      - name: Show build result
-        run: cd arrow-datafusion/datafusion-cli/target/debug && ./datafusion-cli
+      # - name: Show build result
+      #   run: cd arrow-datafusion/datafusion-cli/target/debug && ./datafusion-cli
 
       # - uses: actions/setup-python@v4
       #   with:
@@ -65,7 +65,7 @@ jobs:
           chmod 0600 ~/.pgpass
           echo "ls"
           ls 
-          psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -f fuzzing-tests/create_table_postgres.sql
+          psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -f fuzzing-tests/create_table_psql.sql
           psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -c "\copy test0 FROM '$(pwd)/fuzzing-tests/test0.csv' WITH (FORMAT csv, HEADER true);"
           echo "execute query"
           psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -f fuzzing-tests/query.sql   
