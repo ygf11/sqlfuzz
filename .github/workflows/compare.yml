@@ -27,7 +27,7 @@ jobs:
       - name: Setup Rust toolchain
         shell: bash
         run: |
-          echo "Installing stable
+          echo "Installing stable"
           rustup toolchain install stable
           rustup default stable
           # rustup component add rustfmt  
