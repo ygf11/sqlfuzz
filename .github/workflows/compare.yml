@@ -73,7 +73,7 @@ jobs:
         run: cd arrow-datafusion/datafusion-cli/target/debug && ./datafusion-cli
 
       - name: Build sqlfuzz
-        run: cargo build
+        run: cargo build && ./target/debug/sqlfuzz
        
 
       # - uses: actions/setup-python@v4
