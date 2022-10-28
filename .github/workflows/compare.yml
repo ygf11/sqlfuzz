@@ -19,6 +19,21 @@ jobs:
       - name: Pwd directory
         run: pwd  
 
+      - name: Install Build Dependencies
+        shell: bash
+        run: |
+          apt-get update
+          apt-get install -y protobuf-compiler
+      - name: Setup Rust toolchain
+        shell: bash
+        run: |
+          echo "Installing ${{ inputs.rust-version }}"
+          rustup toolchain install ${{ inputs.rust-version }}
+          rustup default ${{ inputs.rust-version }}
+          rustup component add rustfmt  
+      - name: Build datafusion-cli
+        run: (cd datafusion-cli && cargo build)    
+
       # - name: Install latest nightly
       #   uses: actions-rs/toolchain@v1
       #   with:
