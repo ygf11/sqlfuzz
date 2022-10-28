@@ -65,25 +65,32 @@ jobs:
           echo "Installing stable"
           rustup toolchain install stable
           rustup default stable
-          # rustup component add rustfmt  
       # - name: Build datafusion-cli
       #   run: (cd arrow-datafusion/datafusion-cli && cargo build)    
 
       # - name: Show build result
       #   run: cd arrow-datafusion/datafusion-cli/target/debug && ./datafusion-cli
 
-      - name: Build sqlfuzz
-        run: cargo build && ./target/debug/sqlfuzz
+      # - name: Build sqlfuzz
+      #   run: |  
+      #     cargo build 
+      #     ./target/debug/sqlfuzz
        
-
-      # - uses: actions/setup-python@v4
-      #   with:
-      #     python-version: "3.10"
-      # - name: Install Python dependencies
-      #   run: |
-      #     python -m pip install --upgrade pip setuptools wheel
-      #     python -m pip install -r integration-tests/requirements.txt
-
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r fuzzing-tests/requirements.txt
+      - name: Test Psql Parity
+        run: python compare.py
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+          POSTGRES_DB: db_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
       # - name: Install latest nightly
       #   uses: actions-rs/toolchain@v1
       #   with:
