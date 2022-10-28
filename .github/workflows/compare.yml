@@ -32,7 +32,7 @@ jobs:
           rustup default stable
           # rustup component add rustfmt  
       - name: Build datafusion-cli
-        run: (cd datafusion-cli && cargo build)    
+        run: (cd arrow-datafusion/datafusion-cli && cargo build)    
 
       # - name: Install latest nightly
       #   uses: actions-rs/toolchain@v1
