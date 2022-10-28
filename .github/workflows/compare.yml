@@ -35,7 +35,7 @@ jobs:
         run: (cd arrow-datafusion/datafusion-cli && cargo build)    
 
       - name: Show build result
-        run: ls target/debug
+        run: ls
 
       # - name: Install latest nightly
       #   uses: actions-rs/toolchain@v1
