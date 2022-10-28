@@ -72,9 +72,9 @@ jobs:
       - name: Show build result
         run: cd arrow-datafusion/datafusion-cli/target/debug && ./datafusion-cli
 
-      - uses: actions/checkout@v3
-      - name: Checkout to sqlfuzz
-        run: ls 
+      - name: Build sqlfuzz
+        run: cargo build
+       
 
       # - uses: actions/setup-python@v4
       #   with:
