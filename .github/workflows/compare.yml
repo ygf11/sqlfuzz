@@ -1,0 +1,36 @@
+name: datafusion sql fuzzing
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: build datafusion cli
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: apache/arrow-datafusion
+          path: ./arrow-datafusion
+          submodules: recursive
+
+      - name: Show Working directory
+        run: ls    
+
+      # - name: Install latest nightly
+      #   uses: actions-rs/toolchain@v1
+      #   with:
+      #     toolchain: nightly
+      #     override: true
+      #     components: rustfmt, clippy
+
+      # - name: Run cargo fmt
+      #   uses: actions-rs/cargo@v1
+      #   with:
+      #     command: fmt
+      #     args: -- --check
+
+      # - name: Run cargo clippy
+      #   uses: actions-rs/cargo@v1
+      #   with:
+      #     command: clippy
+      #     args: -- -D warnings
