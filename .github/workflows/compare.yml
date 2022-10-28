@@ -84,7 +84,7 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install -r fuzzing-tests/requirements.txt
       - name: Test Psql Parity
-        run: python compare.py
+        run: python fuzzing-tests/compare.py
         env:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
