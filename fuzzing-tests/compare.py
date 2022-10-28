@@ -117,6 +117,9 @@ r2 = generate_csv_from_psql("./fuzzing-tests/query.sql")
 
 f_r1 = format_csv_content(r1)
 f_r2 = format_csv_content(r2)
+
+print(f_r1)
+print(f_r2)
 # df1 = pd.read_csv(f_r1)
 # df2 = pd.read_csv(f_r2)
 # np.testing.assert_allclose(df1, df2, equal_nan=True)
