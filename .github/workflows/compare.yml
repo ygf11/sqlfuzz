@@ -71,7 +71,7 @@ jobs:
           psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -f fuzzing-tests/query.sql   
         env:
           POSTGRES_HOST: localhost
-          POSTGRES_PORT: 5432
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
           POSTGRES_DB: db_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
