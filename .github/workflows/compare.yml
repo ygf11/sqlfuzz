@@ -14,7 +14,10 @@ jobs:
           submodules: recursive
 
       - name: Show Working directory
-        run: ls    
+        run: ls  
+
+      - name: Pwd directory
+        run: pwd  
 
       # - name: Install latest nightly
       #   uses: actions-rs/toolchain@v1
