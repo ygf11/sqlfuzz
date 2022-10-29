@@ -68,14 +68,21 @@ jobs:
       - name: Build datafusion-cli
         run: (cd arrow-datafusion/datafusion-cli && cargo build)    
 
-      - name: Show build result
-        run: cd arrow-datafusion/datafusion-cli/target/debug && ./datafusion-cli
-
+      # - name: Show build result
+      #   run: cd arrow-datafusion/datafusion-cli/target/debug && ./datafusion-cli
+       
       # - name: Build sqlfuzz
       #   run: |  
       #     cargo build 
       #     ./target/debug/sqlfuzz
-       
+      - name: Generate test data
+        run: |
+          echo "show fuzzing-tests"
+          ls ./fuzzing-tests
+          echo "remove"
+      # 生成csv数据 => 写入到fuzzing-tests目录
+      # 生成sql =>写入到fuzzing-tests目录 
+
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
