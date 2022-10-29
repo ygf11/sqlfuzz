@@ -24,8 +24,8 @@ CREATE_TABLE_SQL_FILE = "./fuzzing-tests/create_table.sql"
 def generate_csv_from_datafusion(fname: str):
     return subprocess.check_output(
         [
-            # "./arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
-            "/home/work/arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
+            "./arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
+            # "/home/work/arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
 
             "-f",
             CREATE_TABLE_SQL_FILE,
@@ -63,7 +63,7 @@ def generate_csv_from_psql(fname: str):
 
     return subprocess.check_output(cmd)
 # 1. sort
-# 2. rmove the end     
+# 2. remove the end     
 def format_csv_content(content: str, delete_end_new_line: bool):
     array = content.splitlines()
     header = array[0]
@@ -78,6 +78,8 @@ def format_csv_content(content: str, delete_end_new_line: bool):
     result = b'\n'.join(rows)
     return header + b'\n' + result + b'\n'
 
+def is_numpy_floating(dtype):
+    np.issubdtype(dtype, np.floating) 
 
 root = Path(os.path.dirname(__file__)) / "sqls"
 test_files = set(root.glob("*.sql"))
@@ -115,13 +117,20 @@ f_r1 = format_csv_content(r1, True)
 f_r2 = format_csv_content(r2, False)
 
 df1 = pd.read_csv(io.BytesIO(r1), keep_default_na=False)
-# print(df1)
+print(df1["c5"].to_numpy())
 df2 = pd.read_csv(io.BytesIO(r2), keep_default_na=False)
 # print(df2)
 
 # TODO error message
 for column_name in df1.columns:
-    np.testing.assert_equal(df1[column_name].to_numpy(), df2[column_name].to_numpy(), verbose=True)
+    c1 = df1[column_name].to_numpy()
+    c2 = df2[column_name].to_numpy()
+    if is_numpy_floating(c1.dtype):
+        print("float")
+        np.testing.assert_allclose(c1, c2, equal_nan=True, verbose=True)
+    else:
+        print("not float")    
+        np.testing.assert_equal(c1,c2, verbose=True)
 
 
 
