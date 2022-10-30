@@ -116,6 +116,9 @@ r2 = generate_csv_from_psql("./fuzzing-tests/query.sql")
 f_r1 = format_csv_content(r1, True)
 f_r2 = format_csv_content(r2, False)
 
+print(f_r1)
+print(f_r2)
+
 df1 = pd.read_csv(io.BytesIO(r1), keep_default_na=False)
 print(df1["c5"].to_numpy())
 df2 = pd.read_csv(io.BytesIO(r2), keep_default_na=False)
