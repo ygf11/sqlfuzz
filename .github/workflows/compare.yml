@@ -74,11 +74,12 @@ jobs:
       - name: Build sqlfuzz
         run: cargo build 
 
+      - name: Show build result
+        run: ls target/
+
       - name: Generate test data
-        run: |
-          echo "show fuzzing-tests"
-          ls ./fuzzing-tests
-          ./target/debug/sqlfuzz data --path ./testdata/ --num-files 1 --row-count 10
+        run: ./target/debug/sqlfuzz data --path ./testdata/ --num-files 1 --row-count 10
+     
       - name: Show files in testdata   
         run: ls -lh testdata   
 
