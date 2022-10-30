@@ -29,7 +29,7 @@ jobs:
           echo "ls"
           ls 
           psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -f fuzzing-tests/create_table_psql.sql
-          psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -c "\copy test0 FROM '$(pwd)/fuzzing-tests/test0.csv' WITH (FORMAT csv, HEADER true);"
+          psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -c "\copy test0 FROM '$(pwd)/testdata/test0.csv' WITH (FORMAT csv, HEADER true);"
           echo "execute query"
           psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -f fuzzing-tests/query.sql   
         env:
@@ -79,12 +79,15 @@ jobs:
 
       - name: Create testdata dir
         run: mkdir testdata
-        
+
       - name: Generate test data
         run: ./target/debug/sqlfuzz data --path ./testdata/ --num-files 1 --row-count 10
      
-      - name: Show files in testdata   
-        run: ls -lh testdata   
+      - name: Generate query sql  
+        run: ./target/debug/sqlfuzz query --table ./testdata/test0.parquet --count 1  --max-depth 1 > ./testdata/query.sql   
+
+      - name: Show query sql
+        run: cat ./testdata/query.sql   
 
       - uses: actions/setup-python@v4
         with:
@@ -92,12 +95,26 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          python -m pip install -r fuzzing-tests/requirements.txt
+          python -m pip install -r fuzzing-tests/requirements.txt    
       - name: Parquet to csv
         run: python fuzzing-tests/parquet2csv.py 
 
       - name: Show files in testdata   
-        run: ls -lh testdata   
+        run: ls -lh testdata  
+
+      - name: Test Psql Parity
+        run: python fuzzing-tests/compare.py
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+          POSTGRES_DB: db_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres 
+      
+      # TODO:
+      # * load multiple cav files to pg-server
+      # * generate query
+      # * test
 
       # - uses: actions/setup-python@v4
       #   with:
