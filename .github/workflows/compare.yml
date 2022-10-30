@@ -39,7 +39,7 @@ jobs:
       #     POSTGRES_USER: postgres
       #     POSTGRES_PASSWORD: postgres
       - name: checkout to working dir
-      - uses: actions/checkout@v3
+        uses: actions/checkout@v3
 
       - name: checkout to arrow-datafusion
         uses: actions/checkout@v3
