@@ -72,9 +72,7 @@ jobs:
       #   run: cd arrow-datafusion/datafusion-cli/target/debug && ./datafusion-cli
        
       - name: Build sqlfuzz
-        run: |  
-          cargo build 
-          ./target/debug/sqlfuzz
+        run: cargo build 
 
       - name: Remove files in testdata     
         run: cd testdata && rm -rf *
