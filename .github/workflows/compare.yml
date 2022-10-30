@@ -134,7 +134,10 @@ jobs:
           POSTGRES_DB: db_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres 
-      
+      - uses: actions/upload-artifact@v3
+        with:
+         name: my-artifact
+         path: testdata # or path/to/artifact
       # TODO:
       # * load multiple cav files to pg-server
       # * generate query
