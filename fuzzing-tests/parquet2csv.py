@@ -12,5 +12,5 @@ for file in os.listdir("testdata"):
         file_name = Path(file).stem
         print("{} {} {}".format("testdata/" + file, file_name, "testdata/"+file_name+".csv"))
         df = pd.read_parquet('testdata/{}.parquet'.format(file_name))
-        df.to_csv('testdata/{}.csv'.format(file_name))
+        df.to_csv('testdata/{}.csv'.format(file_name), index = False)
 
