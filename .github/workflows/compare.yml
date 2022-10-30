@@ -74,9 +74,6 @@ jobs:
       - name: Build sqlfuzz
         run: cargo build 
 
-      - name: Remove files in testdata     
-        run: cd testdata && rm -rf *
-
       - name: Generate test data
         run: |
           echo "show fuzzing-tests"
