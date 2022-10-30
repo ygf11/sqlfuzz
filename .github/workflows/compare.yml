@@ -29,7 +29,7 @@ jobs:
           echo "ls"
           ls 
           psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -f fuzzing-tests/create_table_psql.sql
-          psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -c "\copy test0 FROM '$(pwd)/testdata/test0.csv' WITH (FORMAT csv, HEADER true);"
+          psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -c "\copy test0 FROM '$(pwd)/fuzzing-tests/test0.csv' WITH (FORMAT csv, HEADER true);"
           echo "execute query"
           psql -d "$POSTGRES_DB" -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -f fuzzing-tests/query.sql   
         env:
