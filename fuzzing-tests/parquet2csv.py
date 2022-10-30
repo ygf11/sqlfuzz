@@ -7,5 +7,10 @@ from wsgiref import headers
 import numpy as np
 import pandas as pd
 
-df = pd.read_parquet('testdata/test0.parquet')
-df.to_csv('testdata/test0.csv')
+for file in os.listdir("testdata"):
+    if file.startswith("test"):
+        file_name = Path(file).stem
+        print("{} {} {}".format("testdata/" + file, file_name, "testdata/"+file_name+".csv"))
+        df = pd.read_parquet('testdata/{}.parquet'.format(file_name))
+        df.to_csv('testdata/{}.csv'.format(file_name))
+
