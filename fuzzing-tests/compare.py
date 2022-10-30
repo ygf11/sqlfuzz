@@ -24,8 +24,8 @@ CREATE_TABLE_SQL_FILE = "./fuzzing-tests/create_table.sql"
 def generate_csv_from_datafusion(fname: str):
     return subprocess.check_output(
         [
-            "./arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
-            # "/home/work/arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
+            # "./arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
+            "/home/work/arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
 
             "-f",
             CREATE_TABLE_SQL_FILE,
@@ -110,8 +110,8 @@ test_files = set(root.glob("*.sql"))
 # t1.sort()
 # print(t1)
 
-r1 = generate_csv_from_datafusion("./fuzzing-tests/query.sql")
-r2 = generate_csv_from_psql("./fuzzing-tests/query.sql")
+r1 = generate_csv_from_datafusion("./testdata/query.sql")
+r2 = generate_csv_from_psql("./testdata/query.sql")
 
 f_r1 = format_csv_content(r1, True)
 f_r2 = format_csv_content(r2, False)
@@ -120,8 +120,10 @@ print(f_r1)
 print(f_r2)
 
 df1 = pd.read_csv(io.BytesIO(r1), keep_default_na=False)
-print(df1["c5"].to_numpy())
 df2 = pd.read_csv(io.BytesIO(r2), keep_default_na=False)
+
+print(df1)
+print(df2)
 # print(df2)
 
 # TODO error message

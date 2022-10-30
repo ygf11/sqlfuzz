@@ -276,7 +276,7 @@ async fn data_gen(config: &DataGen) -> Result<()> {
 
         let create_table_sql = format!(
             "CREATE EXTERNAL TABLE test{} (c0 SMALLINT NULL, c1 SMALLINT NULL, c2 INT NULL, c3 INT NULL, c4 VARCHAR NULL, c5 VARCHAR NULL) STORED AS CSV WITH HEADER ROW
-            LOCATION '{}';\n",
+            LOCATION '{}';",
             i,
             path.to_string_lossy()
         );
@@ -344,7 +344,13 @@ async fn query_gen(config: &QueryGen) -> Result<()> {
         match ctx.create_logical_plan(&sql) {
             Ok(_plan) => {
                 generated += 1;
-                println!("-- SQL Query #{}:\n\n{};\n\n", generated, sql);
+
+                if generated + 1 == num_queries {
+                    println!("-- SQL Query #{}:\n\n{};", generated, sql);
+                } else {
+                    println!("-- SQL Query #{}:\n\n{};\n\n", generated, sql);
+                }
+                
                 // println!("Plan:\n\n{:?}", plan)
             }
             Err(e) if config.verbose => {
