@@ -345,7 +345,7 @@ async fn query_gen(config: &QueryGen) -> Result<()> {
             Ok(_plan) => {
                 generated += 1;
 
-                if generated + 1 == num_queries {
+                if generated == num_queries {
                     println!("-- SQL Query #{}:\n\n{};", generated, sql);
                 } else {
                     println!("-- SQL Query #{}:\n\n{};\n\n", generated, sql);
