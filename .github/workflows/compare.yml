@@ -93,7 +93,10 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install -r fuzzing-tests/requirements.txt
       - name: Parquet to csv
-        run: python fuzzing-tests/parquet2csv.py  
+        run: python fuzzing-tests/parquet2csv.py 
+
+      - name: Show files in testdata   
+        run: ls -lh testdata   
 
       # - uses: actions/setup-python@v4
       #   with:
