@@ -24,8 +24,8 @@ CREATE_TABLE_SQL_FILE = "./fuzzing-tests/create_table.sql"
 def generate_csv_from_datafusion(fname: str):
     return subprocess.check_output(
         [
-            # "./arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
-            "/home/work/arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
+            "./arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
+            # "/home/work/arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
 
             "-f",
             CREATE_TABLE_SQL_FILE,
