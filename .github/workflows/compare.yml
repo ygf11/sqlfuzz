@@ -128,12 +128,12 @@ jobs:
 
       - name: Test Psql Parity
         run: python fuzzing-tests/compare.py
-        # env:
-        #   POSTGRES_HOST: localhost
-        #   POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
-        #   POSTGRES_DB: db_test
-        #   POSTGRES_USER: postgres
-        #   POSTGRES_PASSWORD: postgres 
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+          POSTGRES_DB: db_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres 
       
       # TODO:
       # * load multiple cav files to pg-server
