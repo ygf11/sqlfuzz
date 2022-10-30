@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use arrow::csv::Writer;
 use datafusion::arrow::array::{Array, Int32Array, Int8Array, StringArray};
-use datafusion::arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use datafusion::arrow::datatypes::{DataType, Field, Schema};
 use datafusion::arrow::record_batch::RecordBatch;
 use datafusion::logical_plan::JoinType;
 use datafusion::parquet::arrow::ArrowWriter;
@@ -27,12 +26,11 @@ use datafusion::{
     },
 };
 use sqlfuzz::{generate_batch, plan_to_sql, FuzzConfig, SQLRelationGenerator, SQLTable};
-use std::io::{BufRead, BufReader, Write};
-use std::str::FromStr;
+use std::io::Write;
+use std::io::{BufRead, BufReader};
 use std::{
     fs::File,
     path::{Path, PathBuf},
-    process::{Command, Output},
     sync::Arc,
 };
 use structopt::StructOpt;
@@ -48,14 +46,10 @@ enum Config {
     Execute(ExecuteConfig),
     /// Compare two test runs
     Compare(CompareConfig),
-    /// Run SQL queries and capture results
-    ExecuteV2(ExecuteConfigV2),
 }
 
 #[derive(Debug, StructOpt)]
 struct DataGen {
-    #[structopt(short, long, required = true)]
-    format: FileFormat,
     #[structopt(short, long, required = true)]
     num_files: usize,
     #[structopt(short, long, required = true)]
@@ -88,17 +82,6 @@ struct ExecuteConfig {
     verbose: bool,
 }
 
-/// execute with datafusion-cli
-#[derive(Debug, StructOpt)]
-struct ExecuteConfigV2 {
-    #[structopt(short, long, required = true)]
-    datafusion_cli: PathBuf,
-    #[structopt(short, long, required = true)]
-    create_table: PathBuf,
-    #[structopt(short, long, required = true)]
-    query: PathBuf,
-}
-
 #[derive(Debug, StructOpt)]
 struct CompareConfig {
     #[structopt(required = true)]
@@ -114,7 +97,6 @@ async fn main() -> Result<()> {
         Config::Data(config) => data_gen(&config).await,
         Config::Execute(config) => execute(&config).await,
         Config::Compare(config) => compare(&config).await,
-        Config::ExecuteV2(config) => execute_v2(&config).await,
     }
 }
 
@@ -212,53 +194,6 @@ async fn execute(config: &ExecuteConfig) -> Result<()> {
     Ok(())
 }
 
-async fn execute_v2(config: &ExecuteConfigV2) -> Result<()> {
-    // let queries = if config.query.is_dir() {
-    //     config
-    //         .query
-    //         .read_dir()?
-    //         .filter(|entry| entry.as_ref().unwrap().path().is_file())
-    //         .map(|entry| entry.unwrap().path())
-    //         .collect::<Vec<_>>()
-    // } else {
-    //     vec![config.query.clone()]
-    // };
-    let datafusion_cli = &config.datafusion_cli;
-    let create_table = &config.create_table;
-    let query = &config.query;
-    println!(
-        "currenr_dir:{:?}",
-        std::env::current_dir().unwrap().to_str()
-    );
-    let out = execute_single_query(datafusion_cli, create_table, query)?;
-    println!("{}", String::from_utf8(out.stdout).unwrap());
-    Ok(())
-}
-
-fn execute_single_query(
-    datafusion_cli: &PathBuf,
-    create_table: &PathBuf,
-    query: &PathBuf,
-) -> Result<Output> {
-    println!("datafusion-cli:{}", datafusion_cli.to_string_lossy());
-    println!(
-        "create_table:{}",
-        create_table.to_string_lossy().to_string()
-    );
-    println!("query:{}", query.to_string_lossy());
-
-    let command = format!(
-        "{} -f {} -f {} --format table -q",
-        datafusion_cli.to_string_lossy(),
-        create_table.to_string_lossy(),
-        query.to_string_lossy()
-    );
-
-    let output = Command::new("sh").arg("-c").arg(command).output()?;
-
-    Ok(output)
-}
-
 fn print_results(batches: Vec<RecordBatch>) {
     for batch in &batches {
         for i in 0..batch.num_rows() {
@@ -322,11 +257,43 @@ async fn data_gen(config: &DataGen) -> Result<()> {
         Field::new("c5", DataType::Utf8, true),  // VARCHAR text
     ]));
 
-    match config.format {
-        FileFormat::Csv => generate_csv_file(config, schema),
-        FileFormat::Parquet => generate_parquet_file(config, schema),
-        _ => unimplemented!(),
+    let mut rng = rand::thread_rng();
+    let writer_properties = WriterProperties::builder().build();
+
+    let mut create_table_file = File::create(config.path.join("create_table.sql"))?;
+    let mut create_table_for_psql_file = File::create(config.path.join("create_table_psql.sql"))?;
+
+    for i in 0..config.num_files {
+        let batch = generate_batch(&mut rng, &schema, config.row_count)?;
+        let filename = format!("test{}.parquet", i);
+        let path = config.path.join(&filename);
+        println!("Generating {:?}", path);
+        let file = File::create(path.clone())?;
+        let mut writer =
+            ArrowWriter::try_new(file, schema.clone(), Some(writer_properties.clone()))?;
+        writer.write(&batch)?;
+        writer.close()?;
+
+        let create_table_sql = format!(
+            "CREATE EXTERNAL TABLE test{} (c0 SMALLINT NULL, c1 SMALLINT NULL, c2 INT NULL, c3 INT NULL, c4 VARCHAR NULL, c5 VARCHAR NULL) STORED AS CSV WITH HEADER ROW
+            LOCATION '{}';\n",
+            i,
+            path.to_string_lossy()
+        );
+        println!("sql:{}", create_table_sql);
+        create_table_file.write(create_table_sql.as_bytes())?;
+
+        let create_table_for_psql = format!(
+            "CREATE TABLE test{} (c0 SMALLINT NULL, c1 SMALLINT NULL, c2 INTEGER NULL, c3 Integer NULL, c4 TEXT NULL, c5 TEXT NULL);\n",
+            i,
+        );
+        println!("sql_for_psql:{}", create_table_sql);
+        create_table_for_psql_file.write(create_table_for_psql.as_bytes())?;
     }
+
+    create_table_file.sync_all()?;
+    create_table_for_psql_file.sync_all()?;
+    Ok(())
 }
 
 async fn query_gen(config: &QueryGen) -> Result<()> {
@@ -377,12 +344,7 @@ async fn query_gen(config: &QueryGen) -> Result<()> {
         match ctx.create_logical_plan(&sql) {
             Ok(_plan) => {
                 generated += 1;
-                if generated < num_queries {
-                    print!("-- SQL Query #{}:\n\n{};\n\n", generated, sql);
-                } else {
-                    print!("-- SQL Query #{}:\n\n{};", generated, sql);
-                };
-                // println!("-- SQL Query #{}:\n\n{};\n\n", generated, sql);
+                println!("-- SQL Query #{}:\n\n{};\n\n", generated, sql);
                 // println!("Plan:\n\n{:?}", plan)
             }
             Err(e) if config.verbose => {
@@ -427,26 +389,11 @@ fn parse_filename(filename: &Path) -> Result<&str> {
         .ok_or_else(|| DataFusionError::Internal("Invalid filename".to_string()))
 }
 
-#[derive(Debug)]
 enum FileFormat {
     Avro,
     Csv,
     Json,
     Parquet,
-}
-
-impl FromStr for FileFormat {
-    type Err = String;
-
-    fn from_str(s: &str) -> std::result::Result<Self, String> {
-        match s.to_ascii_lowercase().as_str() {
-            "avro" => Ok(FileFormat::Avro),
-            "csv" => Ok(FileFormat::Csv),
-            "json" => Ok(FileFormat::Json),
-            "parquet" => Ok(FileFormat::Parquet),
-            _ => Err("".to_string()),
-        }
-    }
 }
 
 fn file_format(filename: &str) -> Result<FileFormat> {
@@ -478,82 +425,6 @@ fn sanitize_table_name(name: &str) -> String {
         }
     }
     str
-}
-
-fn generate_csv_file(config: &DataGen, schema: SchemaRef) -> Result<()> {
-    let mut create_tabel_file = File::create(config.path.join("create_table.sql"))?;
-    let mut create_tabel_for_psql_file =
-        File::create(config.path.join("create_table_for_psql.sql"))?;
-
-    let mut rng = rand::thread_rng();
-
-    for i in 0..config.num_files {
-        let batch = generate_batch(&mut rng, &schema, config.row_count)?;
-        let filename = format!("test{}.csv", i);
-        let path = config.path.join(&filename);
-        println!("Generating {:?}", path);
-        let file = File::create(path.clone())?;
-        let mut writer = Writer::new(file);
-        writer.write(&batch)?;
-
-        // Field::new("c0", DataType::Int16, true),// smallint
-        // Field::new("c1", DataType::Int16, true),// smallint
-        // Field::new("c2", DataType::Int32, true),// Int Integer
-        // Field::new("c3", DataType::Int32, true),// Int Integer
-        // Field::new("c4", DataType::Utf8, true),// VARCHAR text
-        // Field::new("c5", DataType::Utf8, true),// VARCHAR text
-
-        let create_table_sql = format!(
-            "CREATE EXTERNAL TABLE test{} (c0 SMALLINT NULL, c1 SMALLINT NULL, c2 INT NULL, c3 INT NULL, c4 VARCHAR NULL, c5 VARCHAR NULL) STORED AS CSV WITH HEADER ROW
-            LOCATION '{}';\n",
-            i,
-            path.to_string_lossy()
-        );
-        println!("sql:{}", create_table_sql);
-        create_tabel_file.write(create_table_sql.as_bytes())?;
-
-        let create_table_for_psql = format!(
-            "CREATE EXTERNAL TABLE test{} (c0 SMALLINT NULL, c1 SMALLINT NULL, c2 INTEGER NULL, c3 Integer NULL, c4 TEXT NULL, c5 TEXT NULL);\n",
-            i,
-        );
-        println!("sql_for_psql:{}", create_table_sql);
-        create_tabel_for_psql_file.write(create_table_for_psql.as_bytes())?;
-    }
-
-    create_tabel_file.sync_all()?;
-    create_tabel_for_psql_file.sync_all()?;
-
-    Ok(())
-}
-
-fn generate_parquet_file(config: &DataGen, schema: SchemaRef) -> Result<()> {
-    let mut create_tabel_file = File::create(config.path.join("create_table.sql"))?;
-    let mut rng = rand::thread_rng();
-    let writer_properties = WriterProperties::builder().build();
-
-    for i in 0..config.num_files {
-        let batch = generate_batch(&mut rng, &schema, config.row_count)?;
-        let filename = format!("test{}.parquet", i);
-        let path = config.path.join(&filename);
-        println!("Generating {:?}", path);
-        let file = File::create(path.clone())?;
-        let mut writer =
-            ArrowWriter::try_new(file, schema.clone(), Some(writer_properties.clone()))?;
-        writer.write(&batch)?;
-        writer.close()?;
-
-        let create_table_sql = format!(
-            "CREATE EXTERNAL TABLE test{} STORED AS PARQUET LOCATION '{}';\n",
-            i,
-            path.to_string_lossy()
-        );
-        println!("sql:{}", create_table_sql);
-        create_tabel_file.write(create_table_sql.as_bytes())?;
-    }
-
-    create_tabel_file.sync_all()?;
-
-    Ok(())
 }
 
 async fn register_table(
