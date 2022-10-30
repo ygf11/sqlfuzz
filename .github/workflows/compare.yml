@@ -77,6 +77,9 @@ jobs:
       - name: Show build result
         run: ls target/
 
+      - name: Create testdata dir
+        run: mkdir testdata
+        
       - name: Generate test data
         run: ./target/debug/sqlfuzz data --path ./testdata/ --num-files 1 --row-count 10
      
