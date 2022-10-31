@@ -278,7 +278,7 @@ async fn data_gen(config: &DataGen) -> Result<()> {
         writer.close()?;
 
         let create_table_sql = format!(
-            "CREATE EXTERNAL TABLE test{} (c0 SMALLINT NULL, c1 SMALLINT NULL, c2 INT NULL, c3 INT NULL, c4 VARCHAR NULL, c5 VARCHAR NULL) STORED AS CSV WITH HEADER ROW
+            "CREATE EXTERNAL TABLE test{} STORED AS CSV WITH HEADER ROW
             LOCATION '{}';",
             i,
             path.to_string_lossy()
