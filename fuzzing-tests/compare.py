@@ -113,6 +113,9 @@ test_files = set(root.glob("*.sql"))
 r1 = generate_csv_from_datafusion("./testdata/query.sql")
 r2 = generate_csv_from_psql("./testdata/query.sql")
 
+print(r1)
+print(r2)
+
 f_r1 = format_csv_content(r1, True)
 f_r2 = format_csv_content(r2, False)
 
@@ -124,7 +127,6 @@ df2 = pd.read_csv(io.BytesIO(r2), keep_default_na=False)
 
 print(df1)
 print(df2)
-# print(df2)
 
 # TODO error message
 for column_name in df1.columns:
