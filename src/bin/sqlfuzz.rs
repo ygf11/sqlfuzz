@@ -25,7 +25,10 @@ use datafusion::{
         AvroReadOptions, CsvReadOptions, NdJsonReadOptions, ParquetReadOptions, SessionContext,
     },
 };
-use sqlfuzz::{generate_batch, plan_to_sql, FuzzConfig, SQLRelationGenerator, SQLTable};
+use sqlfuzz::{
+    generate_batch, plan_to_sql, plan_to_sql_alias, FuzzConfig, SQLRelationGenerator, SQLTable,
+    TableAliasGenerator,
+};
 use std::io::Write;
 use std::io::{BufRead, BufReader};
 use std::{
@@ -337,10 +340,8 @@ async fn query_gen(config: &QueryGen) -> Result<()> {
             let logical_plan = plan.to_logical_plan();
             println!("Input plan:\n{:?}", logical_plan);
         }
-        let sql = plan_to_sql(&plan, 0)?;
-
-        // see if we produced something valid or not (according to DataFusion's
-        // SQL query planner)
+        let sql = plan_to_sql_alias(&plan, 0, &mut TableAliasGenerator::default())?;
+        
         match ctx.create_logical_plan(&sql) {
             Ok(_plan) => {
                 generated += 1;
@@ -350,7 +351,7 @@ async fn query_gen(config: &QueryGen) -> Result<()> {
                 } else {
                     println!("-- SQL Query #{}:\n\n{};\n\n", generated, sql);
                 }
-                
+
                 // println!("Plan:\n\n{:?}", plan)
             }
             Err(e) if config.verbose => {

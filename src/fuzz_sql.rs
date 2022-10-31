@@ -33,6 +33,19 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+#[derive(Clone, Default, Debug)]
+pub struct TableAliasGenerator {
+    next_index: usize,
+}
+
+impl TableAliasGenerator {
+    pub fn next_alias(&mut self) -> String {
+        let idx = self.next_index;
+        self.next_index += 1;
+        format!("t{}", idx)
+    }
+}
+
 pub struct SQLTable {
     name: String,
     schema: DFSchema,
@@ -205,6 +218,10 @@ impl SQLRelation {
             Self::TableScan(x) => LogicalPlan::TableScan(x.clone()),
         })
     }
+
+    pub fn is_table_scan(&self) -> bool {
+        matches!(self, Self::TableScan(_))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -337,6 +354,7 @@ impl<'a> SQLRelationGenerator<'a> {
 
     pub fn generate_relation(&mut self) -> Result<SQLRelation> {
         if self.depth == self.config.max_depth {
+            println!("depth:{}, max_depth:{}", self.depth, self.config.max_depth);
             // generate a leaf node to prevent us recursing forever
             self.generate_table_scan()
         } else {

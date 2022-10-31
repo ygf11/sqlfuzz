@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::fuzz_sql::{SQLExpr, SQLJoin, SQLSelect, SQLSubqueryAlias};
+use crate::fuzz_sql::{SQLExpr, SQLJoin, SQLSelect, SQLSubqueryAlias, TableAliasGenerator};
 use crate::SQLRelation;
 use datafusion::common::Result;
 
@@ -73,6 +73,87 @@ pub fn plan_to_sql(plan: &SQLRelation, indent: usize) -> Result<String> {
         }
         SQLRelation::SubqueryAlias(SQLSubqueryAlias { input, alias, .. }) => {
             let sql = plan_to_sql(input, indent + 1)?;
+            Ok(format!("({}) {}", sql, alias))
+        }
+    }
+}
+
+/// Generate a SQL string from a SQLRelation struct
+pub fn plan_to_sql_alias(
+    plan: &SQLRelation,
+    indent: usize,
+    table_alias_generator: &mut TableAliasGenerator,
+) -> Result<String> {
+    let indent_str = "  ".repeat(indent);
+    match plan {
+        SQLRelation::Select(SQLSelect {
+            projection,
+            filter,
+            input,
+        }) => {
+            // println!("plan_to_sql, select");
+            // let input_alias = table_alias_generator.next_alias();
+            let expr: Vec<String> = projection
+                .iter()
+                .map(|e| expr_to_sql(e, indent))
+                .collect::<Result<Vec<_>>>()?;
+            let input_name = plan_to_sql_alias(input, indent + 1, table_alias_generator)?;
+            let where_clause = if let Some(predicate) = filter {
+                let predicate = expr_to_sql(predicate, indent)?;
+                format!("\n{}WHERE {}", indent_str, predicate)
+            } else {
+                "".to_string()
+            };
+
+            let from = if (*input).is_table_scan() {
+                format!("{}", input_name)
+            } else {
+                let input_alias = table_alias_generator.next_alias();
+                format!("({}) AS {}", input_name, input_alias)
+            };
+
+            Ok(format!(
+                "SELECT {}\n{}FROM {}{}",
+                expr.join(", "),
+                indent_str,
+                from,
+                where_clause
+            ))
+        }
+        SQLRelation::TableScan(scan) => {
+            // println!("plan_to_sql, table scan");
+            Ok(scan.table_name.clone())
+        }
+        SQLRelation::Join(SQLJoin {
+            left,
+            right,
+            on,
+            join_type,
+            ..
+        }) => {
+            // println!("plan_to_sql, join");
+            let l = plan_to_sql(left, indent + 1)?;
+            let r = plan_to_sql(right, indent + 1)?;
+            let join_condition = on
+                .iter()
+                .map(|(l, r)| format!("{} = {}", l.flat_name(), r.flat_name()))
+                .collect::<Vec<_>>()
+                .join(" AND ");
+            Ok(format!(
+                "\n{}({})\n{}{} JOIN\n{}({})\n{}ON {}",
+                indent_str,
+                l,
+                indent_str,
+                join_type.to_string().to_uppercase(),
+                indent_str,
+                r,
+                indent_str,
+                join_condition
+            ))
+        }
+        SQLRelation::SubqueryAlias(SQLSubqueryAlias { input, alias, .. }) => {
+            // println!("plan_to_sql, subquery");
+            let sql = plan_to_sql_alias(input, indent + 1, table_alias_generator)?;
             Ok(format!("({}) {}", sql, alias))
         }
     }

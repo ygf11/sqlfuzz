@@ -17,5 +17,5 @@ mod fuzz_sql;
 mod sql_writer;
 
 pub use fuzz_data::generate_batch;
-pub use fuzz_sql::{FuzzConfig, SQLRelation, SQLRelationGenerator, SQLTable};
-pub use sql_writer::plan_to_sql;
+pub use fuzz_sql::{FuzzConfig, SQLRelation, SQLRelationGenerator, SQLTable, TableAliasGenerator};
+pub use sql_writer::{plan_to_sql, plan_to_sql_alias};
