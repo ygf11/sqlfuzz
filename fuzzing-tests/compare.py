@@ -18,7 +18,7 @@ pg_db, pg_user, pg_host, pg_port = [
     )
 ]
 
-CREATE_TABLE_SQL_FILE = "./fuzzing-tests/create_table.sql"
+CREATE_TABLE_SQL_FILE = "./testdata/create_table.sql"
 
 
 def generate_csv_from_datafusion(fname: str):
