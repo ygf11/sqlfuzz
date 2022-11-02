@@ -1,6 +1,14 @@
-name: fuzzing
+name: datafusion sql fuzzing
 
-on: [workflow_dispatch]
+on: 
+  push:
+    branches:
+     - "*"
+  pull_request:
+    branches:
+     - "*"
+  schedule:
+    - cron: "10 */23 * * *"
 
 jobs:
   test:
