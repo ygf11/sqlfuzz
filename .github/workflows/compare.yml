@@ -102,9 +102,9 @@ jobs:
       - name: Show query sql
         run: |
           ls ./testdata/sqls  
-          cat  ./testdata/sqls/query0.sql
-          cat  ./testdata/sqls/query1.sql
-          cat  ./testdata/sqls/query2.sql
+          echo "`cat  ./testdata/sqls/query0.sql` \n"
+          echo "`cat  ./testdata/sqls/query1.sql` \n"
+          echo "`cat  ./testdata/sqls/query2.sql` \n"
 
       - uses: actions/setup-python@v4
         with:
