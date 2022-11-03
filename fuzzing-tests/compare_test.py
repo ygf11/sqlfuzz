@@ -8,13 +8,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-pg_db, pg_user, pg_host, pg_port = [
+pg_db, pg_user, pg_host, pg_port, datafusion_cli = [
     os.environ.get(i)
     for i in (
         "POSTGRES_DB",
         "POSTGRES_USER",
         "POSTGRES_HOST",
         "POSTGRES_PORT",
+        "DATAFUSION_CLI"
     )
 ]
 
@@ -24,8 +25,9 @@ CREATE_TABLE_SQL_FILE = "./testdata/create_table.sql"
 def generate_csv_from_datafusion(fname: str):
     return subprocess.check_output(
         [
-            "./arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
+            # "./arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
             # "/home/work/arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
+            datafusion_cli,
 
             "-f",
             CREATE_TABLE_SQL_FILE,
@@ -88,7 +90,7 @@ def both_empty_result(c1 :str, c2 :str)->bool:
 
 # root = Path(os.path.dirname(__file__)) / "sqls"
 root = Path(os.getcwd()) / "testdata/sqls"
-# print(root)
+# print(datafusion_cli)
 test_files = set(root.glob("*.sql"))
 # for file in test_files:
 #     print(file)

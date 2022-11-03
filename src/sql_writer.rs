@@ -95,19 +95,14 @@ pub fn plan_to_sql_alias(
                 .iter()
                 .map(|e| expr_to_sql(e, indent))
                 .collect::<Result<Vec<_>>>()?;
-            let input_name = plan_to_sql_alias(input, indent + 1, table_alias_generator)?;
+
+            let (_, from) = input_to_sql(input, indent + 1, table_alias_generator)?;
+            // let input_name = plan_to_sql_alias(input, indent + 1, table_alias_generator)?;
             let where_clause = if let Some(predicate) = filter {
                 let predicate = expr_to_sql(predicate, indent)?;
                 format!("\n{}WHERE {}", indent_str, predicate)
             } else {
                 "".to_string()
-            };
-
-            let from = if (*input).is_table_scan() {
-                format!("{}", input_name)
-            } else {
-                let input_alias = table_alias_generator.next_alias();
-                format!("({}) AS {}", input_name, input_alias)
             };
 
             Ok(format!(
@@ -126,11 +121,19 @@ pub fn plan_to_sql_alias(
             join_type,
             ..
         }) => {
-            let l = plan_to_sql(left, indent + 1)?;
-            let r = plan_to_sql(right, indent + 1)?;
+            let (l_alias, l) = input_to_sql(left, indent + 1, table_alias_generator)?;
+            let (r_alias, r) = input_to_sql(right, indent + 1, table_alias_generator)?;
+            // let l = plan_to_sql_alias(left, indent + 1, table_alias_generator)?;
+            // let r = plan_to_sql_alias(right, indent + 1, table_alias_generator)?;
             let join_condition = on
                 .iter()
-                .map(|(l, r)| format!("{} = {}", l.flat_name(), r.flat_name()))
+                .map(|(l, r)| {
+                    format!(
+                        "{} = {}",
+                        format!("{}.{}", l_alias, l.name),
+                        format!("{}.{}", r_alias, r.name)
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join(" AND ");
             Ok(format!(
@@ -171,4 +174,19 @@ fn expr_to_sql(expr: &SQLExpr, indent: usize) -> Result<String> {
             }
         }
     })
+}
+
+fn input_to_sql(
+    input: &SQLRelation,
+    indent: usize,
+    table_alias_generator: &mut TableAliasGenerator,
+) -> Result<(String, String)> {
+    let input_str = plan_to_sql_alias(input, indent + 1, table_alias_generator)?;
+    if (*input).is_table_scan() {
+        Ok((input_str.clone(), input_str))
+    } else {
+        let alias = table_alias_generator.next_alias();
+        let input_str = format!("({}) AS {}", input_str, alias);
+        Ok((alias, input_str))
+    }
 }

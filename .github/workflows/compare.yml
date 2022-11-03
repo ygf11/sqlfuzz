@@ -159,6 +159,8 @@ jobs:
           POSTGRES_DB: db_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
+          DATAFUSION_CLI: ./arrow-datafusion/datafusion-cli/target/debug/datafusion-cli
+
 
       # TODO:
       # * load multiple cav files to pg-server
