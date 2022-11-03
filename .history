@@ -1,7 +1,0 @@
-#V2
-\nCREATE EXTERNAL TABLE test0 STORED AS PARQUET\n            LOCATION './testdata/test0.parquet';
-CREATE EXTERNAL TABLE test1 STORED AS PARQUET\n            LOCATION './testdata/test1.parquet';
-CREATE EXTERNAL TABLE test2 STORED AS PARQUET\n            LOCATION './testdata/test2.parquet';
-\nSELECT _c12, _c13, _c14, _c15, _c16, _c17\nFROM (\n    ((SELECT test0.c0 AS _c12, test0.c1 AS _c13, test0.c2 AS _c14, test0.c3 AS _c15, test0.c4 AS _c16, test0.c5 AS _c17\n        FROM test0) AS t0)\n    INNER JOIN\n    ((SELECT test1.c0 AS _c18, test1.c1 AS _c19, test1.c2 AS _c20, test1.c3 AS _c21, test1.c4 AS _c22, test1.c5 AS _c23\n        FROM test1) AS t1)\n    ON t0._c13 = t1._c20) AS t2;
-\nSELECT _c12, _c13, _c14, _c15, _c16, _c17\nFROM (\n    (SELECT test0.c0 AS _c12, test0.c1 AS _c13, test0.c2 AS _c14, test0.c3 AS _c15, test0.c4 AS _c16, test0.c5 AS _c17\n        FROM test0) AS t0\n    INNER JOIN\n    (SELECT test1.c0 AS _c18, test1.c1 AS _c19, test1.c2 AS _c20, test1.c3 AS _c21, test1.c4 AS _c22, test1.c5 AS _c23\n        FROM test1) AS t1\n    ON t0._c13 = t1._c20) AS t2;
-\\q
