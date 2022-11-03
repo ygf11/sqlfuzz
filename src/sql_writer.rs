@@ -123,6 +123,8 @@ pub fn plan_to_sql_alias(
         }) => {
             let (l_alias, l) = input_to_sql(left, indent + 1, table_alias_generator)?;
             let (r_alias, r) = input_to_sql(right, indent + 1, table_alias_generator)?;
+            println!("l:{}", l);
+            println!("r:{}", r);
             // let l = plan_to_sql_alias(left, indent + 1, table_alias_generator)?;
             // let r = plan_to_sql_alias(right, indent + 1, table_alias_generator)?;
             let join_condition = on
@@ -137,7 +139,7 @@ pub fn plan_to_sql_alias(
                 .collect::<Vec<_>>()
                 .join(" AND ");
             Ok(format!(
-                "\n{}({})\n{}{} JOIN\n{}({})\n{}ON {}",
+                "\n{}{}\n{}{} JOIN\n{}{}\n{}ON {}",
                 indent_str,
                 l,
                 indent_str,

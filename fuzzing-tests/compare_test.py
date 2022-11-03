@@ -21,9 +21,8 @@ pg_db, pg_user, pg_host, pg_port, datafusion_cli = [
 
 CREATE_TABLE_SQL_FILE = "./testdata/create_table.sql"
 
-
 def generate_csv_from_datafusion(fname: str):
-    return subprocess.check_output(
+    return subprocess.run(
         [
             # "./arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
             # "/home/work/arrow-datafusion/datafusion-cli/target/debug/datafusion-cli",
@@ -37,6 +36,8 @@ def generate_csv_from_datafusion(fname: str):
             "csv",
             "-q",
         ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
 
 
@@ -63,7 +64,7 @@ def generate_csv_from_psql(fname: str):
         fname,
     ])
 
-    return subprocess.check_output(cmd)
+    return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,)
 # 1. sort
 # 2. remove the end     
 def format_csv_content(content: str, delete_end_new_line: bool):
@@ -101,11 +102,17 @@ class TestPsqlParity:
 
     @pytest.mark.parametrize("fname", test_files, ids=str)
     def test_sql_file(self, fname):
-        r1 = generate_csv_from_datafusion(fname)
-        r2 = generate_csv_from_psql(fname)
-        if both_empty_result(r1, r2):    
-           f_r1 = format_csv_content(r1, True)
-           f_r2 = format_csv_content(r2, False)
+        out1 = generate_csv_from_datafusion(fname)
+        if out1.returncode != 0 or out1.stderr != b'':
+           pytest.fail(f"datafusion-cli cmd out:{out1.stderr}")
+
+        out2 = generate_csv_from_psql(fname)
+        if out2.returncode != 0 or out2.stderr != b'':
+           pytest.fail(f"psql cmd out:{out2.stderr}")
+
+        if both_empty_result(out1.stdout, out2.stdout):    
+           f_r1 = format_csv_content(out1.stdout, True)
+           f_r2 = format_csv_content(out2.stdout, False)
            df1 = pd.read_csv(io.BytesIO(f_r1), keep_default_na=False)
            df2 = pd.read_csv(io.BytesIO(f_r2), keep_default_na=False)
 
@@ -156,9 +163,32 @@ class TestPsqlParity:
 #         print("not float")    
 #         np.testing.assert_equal(c1,c2, verbose=True)
 
+# print("hello")
 
-# r1 = generate_csv_from_datafusion("./testdata/sqls/query0.sql")
-# r2 = generate_csv_from_psql("./testdata/sqls/query0.sql")
+# try:
+#    r1 = generate_csv_from_datafusion("./testdata/sqls/query1.sql")
+# except subprocess.CalledProcessError as e:
+#     print("datafusion raise: {}".format(), e.output)
+#     print("hello")
+
+# try:
+# cmd = generate_csv_from_psql_cmd("./testdata/sqls/query1.sql")
+# out = subprocess.run(cmd, stdout = subprocess.PIPE, stderr=subprocess.PIPE)
+# out = generate_csv_from_datafusion("./testdata/sqls/query1.sql")
+# print(out)
+# if out.returncode != 0 or out.stderr != b'':
+#     print(f"{out.stderr}")
+    # pytest.fail(f"psql cmd out:{out}")
+# except subprocess.CalledProcessError as e:
+#     h = "hello"
+#     print(h)
+#     print(e.output)   
+
+# try:
+#     raise Exception('spam', 'eggs')
+# except Exception as e:
+#     print(e)    
+
 # if both_empty_result(r1, r2):    
 #   # 如果r1 r2为空，则返回成功
 #   f_r1 = format_csv_content(r1, True)
